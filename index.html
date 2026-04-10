@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生命长度测试 | LifeSpan Test</title>
+  <meta name="description" content="40道科学题目，测测你的健康寿命指数。类似MBTI/SBTI风格的生命长度预测测试。">
+  <style>
+    :root {
+      --bg: #f6faf6;
+      --panel: #fff;
+      --text: #1e2a22;
+      --muted: #6a786f;
+      --line: #dbe8dd;
+      --soft: #edf6ef;
+      --accent: #6c8d71;
+      --accent-strong: #4d6a53;
+      --shadow: 0 16px 40px rgba(47,73,55,0.08);
+      --radius: 22px;
+      --success: #4caf50;
+      --warning: #ff9800;
+      --danger: #f44336;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      color: var(--text);
+      background: radial-gradient(circle at 0 0, #f8fff8 0%, var(--bg) 36%, #f2f7f3 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    .shell { max-width: 680px; margin: 0 auto; padding: 20px 16px 60px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    button {
+      cursor: pointer; font: inherit; border: 0;
+      transition: transform .16s, box-shadow .16s, opacity .16s;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+    .btn-primary {
+      background: var(--accent-strong); color: #fff;
+      border-radius: 14px; padding: 14px 28px; font-weight: 700;
+      box-shadow: 0 12px 30px rgba(77,106,83,0.18); font-size: 16px;
+    }
+    .btn-secondary {
+      color: var(--accent-strong); border: 1px solid var(--line);
+      background: #fff; border-radius: 14px; padding: 14px 28px; font-weight: 700; font-size: 16px;
+    }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ===== INTRO ===== */
+    .intro { margin-top: 20px; padding: 32px 24px; text-align: center; }
+    .intro-emoji { font-size: 48px; margin-bottom: 16px; }
+    .intro h1 {
+      font-size: clamp(24px, 5vw, 40px); line-height: 1.15;
+      letter-spacing: -0.02em; margin-bottom: 8px;
+    }
+    .intro .sub { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+    .disclaimer {
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: 12px;
+      padding: 12px 16px; margin-bottom: 24px; font-size: 12px; color: #795548; line-height: 1.6;
+    }
+    .input-group { margin-bottom: 20px; text-align: left; }
+    .input-group label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 14px; color: var(--accent-strong); }
+    .input-row { display: flex; gap: 10px; }
+    .input-row input[type="number"] {
+      flex: 1; padding: 12px 16px; border: 1px solid var(--line);
+      border-radius: 12px; font-size: 16px; outline: none;
+      transition: border-color .2s;
+    }
+    .input-row input[type="number"]:focus { border-color: var(--accent); }
+    .gender-group { display: flex; gap: 10px; }
+    .gender-btn {
+      flex: 1; padding: 12px; border: 2px solid var(--line); border-radius: 12px;
+      background: #fff; font-size: 16px; font-weight: 600; text-align: center;
+      transition: all .2s;
+    }
+    .gender-btn.selected { border-color: var(--accent-strong); background: var(--soft); color: var(--accent-strong); }
+    .intro-footer { color: var(--muted); font-size: 11px; margin-top: 20px; opacity: .7; line-height: 1.6; }
+
+    /* ===== TEST ===== */
+    .test-wrap { margin-top: 20px; padding: 20px; }
+    .topbar { margin-bottom: 16px; }
+    .progress { background: #edf3ee; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress > span {
+      display: block; height: 100%; border-radius: inherit;
+      background: linear-gradient(90deg, #97b59c, #5b7a62);
+      transition: width .3s;
+    }
+    .progress-info {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 8px; font-size: 13px; color: var(--muted);
+    }
+    .question-card { margin-top: 16px; }
+    .question-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; font-size: 12px; color: var(--muted);
+    }
+    .badge {
+      background: var(--soft); border: 1px solid var(--line);
+      border-radius: 999px; padding: 4px 10px; font-size: 12px;
+    }
+    .question-title { font-size: 16px; line-height: 1.7; margin-bottom: 14px; font-weight: 600; }
+    .options { display: flex; flex-direction: column; gap: 8px; }
+    .option {
+      border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px; cursor: pointer;
+      transition: all .2s; background: #fff;
+    }
+    .option:hover { background: #f8fcf9; border-color: #bcd0c1; }
+    .option.selected { border-color: var(--accent-strong); background: var(--soft); }
+    .option input[type="radio"] { display: none; }
+    .option input[type="checkbox"] { display: none; }
+    .option-radio {
+      width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line);
+      flex-shrink: 0; transition: all .2s; display: flex; align-items: center; justify-content: center;
+    }
+    .option.selected .option-radio {
+      border-color: var(--accent-strong); background: var(--accent-strong);
+    }
+    .option.selected .option-radio::after {
+      content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff;
+    }
+    .option-checkbox {
+      width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--line);
+      flex-shrink: 0; transition: all .2s; display: flex; align-items: center; justify-content: center;
+    }
+    .option.selected .option-checkbox {
+      border-color: var(--accent-strong); background: var(--accent-strong);
+    }
+    .option.selected .option-checkbox::after {
+      content: '✓'; color: #fff; font-size: 12px; font-weight: 700;
+    }
+    .option-label { font-size: 14px; line-height: 1.5; }
+    .nav-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 20px; gap: 12px;
+    }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    /* ===== RESULT ===== */
+    .result-wrap { margin-top: 20px; padding: 24px; }
+    .result-hero {
+      text-align: center; padding: 20px 0;
+    }
+    .type-emoji { font-size: 56px; margin-bottom: 12px; }
+    .type-name {
+      font-size: clamp(24px, 5vw, 36px); font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 6px;
+    }
+    .type-code {
+      display: inline-block; background: var(--soft); border: 1px solid var(--line);
+      border-radius: 8px; padding: 4px 12px; font-size: 13px; font-weight: 700;
+      color: var(--accent-strong); margin-bottom: 16px;
+      font-family: 'Courier New', monospace;
+    }
+    .life-cards {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;
+    }
+    .life-card {
+      background: linear-gradient(#fff, #fbfdfb); border: 1px solid var(--line);
+      border-radius: 16px; padding: 16px; text-align: center;
+    }
+    .life-card.primary { background: linear-gradient(135deg, #edf6ef, #f6faf6); }
+    .life-card .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .life-card .value { font-size: 36px; font-weight: 800; color: var(--accent-strong); }
+    .life-card .extra { font-size: 13px; color: var(--success); font-weight: 600; margin-top: 2px; }
+    .result-section {
+      margin-top: 20px; border: 1px solid var(--line); border-radius: 16px;
+      padding: 18px; background: linear-gradient(#fff, #fbfdfb);
+    }
+    .result-section h3 { font-size: 16px; margin-bottom: 12px; }
+    .result-section p { font-size: 14px; line-height: 1.8; color: #304034; }
+    .radar-wrap { text-align: center; padding: 10px 0; }
+    .radar-wrap canvas { width: 100%; max-width: 320px; height: 320px; }
+    .dim-badges {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px;
+    }
+    .dim-badge {
+      text-align: center; padding: 10px 8px; border-radius: 12px;
+      border: 1px solid var(--line); background: #fff; font-size: 12px;
+    }
+    .dim-badge .dim-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+    .dim-badge .dim-name { color: var(--muted); }
+    .dim-badge .dim-level { font-weight: 800; font-size: 16px; margin-top: 2px; }
+    .dim-badge.level-plus .dim-level { color: var(--success); }
+    .dim-badge.level-zero .dim-level { color: var(--muted); }
+    .dim-badge.level-minus .dim-level { color: var(--danger); }
+    .warn-item {
+      display: flex; gap: 10px; padding: 12px; border-radius: 12px;
+      margin-bottom: 8px; font-size: 13px; line-height: 1.6;
+    }
+    .warn-item.danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .warn-item.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .warn-icon { font-size: 18px; flex-shrink: 0; }
+    .improve-item {
+      display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+      border: 1px solid var(--line); border-radius: 14px; margin-bottom: 10px;
+      background: #fff; transition: transform .2s;
+    }
+    .improve-item:hover { transform: translateX(4px); }
+    .improve-icon { font-size: 24px; flex-shrink: 0; }
+    .improve-content { flex: 1; }
+    .improve-label { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+    .improve-tip { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .improve-years {
+      flex-shrink: 0; background: #e8f5e9; border-radius: 8px;
+      padding: 4px 10px; font-size: 14px; font-weight: 800; color: var(--success);
+      white-space: nowrap; align-self: center;
+    }
+    .potential-banner {
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 14px;
+      padding: 16px; text-align: center; margin-top: 14px;
+    }
+    .potential-banner .big { font-size: 28px; font-weight: 800; color: var(--accent-strong); }
+    .potential-banner .note { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .result-actions {
+      display: flex; justify-content: center; gap: 12px; margin-top: 24px; flex-wrap: wrap;
+    }
+    .result-disclaimer {
+      color: var(--muted); font-size: 11px; text-align: center;
+      margin-top: 20px; line-height: 1.7; opacity: .8;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    .fade-in { animation: fadeIn .4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .counter-anim { transition: all 1s ease; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .shell { padding: 14px 12px 48px; }
+      .intro { padding: 24px 18px; }
+      .intro-emoji { font-size: 40px; }
+      .test-wrap, .result-wrap { padding: 16px; }
+      .life-cards { gap: 8px; }
+      .life-card .value { font-size: 28px; }
+      .dim-badges { grid-template-columns: repeat(2, 1fr); }
+      .result-actions { flex-direction: column; }
+      .result-actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- ===== INTRO SCREEN ===== -->
+    <section id="intro" class="screen active">
+      <div class="intro card fade-in">
+        <div class="intro-emoji">🧬</div>
+        <h1>你的生命长度是多少？</h1>
+        <p class="sub">40道科学测试题 · 25种健康人格类型<br>测测你的健康寿命指数，看看能活多久</p>
+
+        <div class="disclaimer">
+          ⚠️ 本测试仅供娱乐参考，不具有医学诊断效力。测试结果基于公开流行病学统计数据估算，不能替代专业医疗建议。如有健康问题请咨询专业医生。
+        </div>
+
+        <div class="input-group">
+          <label>你的年龄</label>
+          <div class="input-row">
+            <input type="number" id="ageInput" min="1" max="120" placeholder="请输入年龄">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>你的性别</label>
+          <div class="gender-group">
+            <div class="gender-btn" data-gender="male" onclick="selectGender('male')">👨 男</div>
+            <div class="gender-btn" data-gender="female" onclick="selectGender('female')">👩 女</div>
+          </div>
+        </div>
+
+        <button id="startBtn" class="btn-primary" disabled onclick="startTest()">开始测试 →</button>
+
+        <div class="intro-footer">
+          参考：Framingham心脏研究 · Blue Zones长寿区研究 · WHO/中国人口寿命数据<br>
+          题目基于公开流行病学文献设计，结果为概率估算
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TEST SCREEN ===== -->
+    <section id="test" class="screen">
+      <div class="test-wrap card fade-in">
+        <div class="topbar">
+          <div class="progress"><span id="progressBar" style="width:0%"></span></div>
+          <div class="progress-info">
+            <span id="progressText">0 / 41</span>
+            <span id="dimLabel" class="badge">—</span>
+          </div>
+        </div>
+
+        <div id="questionArea" class="question-card">
+          <!-- 动态渲染 -->
+        </div>
+
+        <div class="nav-bar">
+          <div class="hint" id="testHint">全选完才会放行哦～</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-secondary" id="prevBtn" onclick="prevQuestion()" style="display:none">← 上一题</button>
+            <button class="btn-primary" id="nextBtn" onclick="nextQuestion()">下一题 →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== RESULT SCREEN ===== -->
+    <section id="result" class="screen">
+      <div class="result-wrap card fade-in" id="resultContent">
+        <!-- 动态渲染 -->
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="js/questions.js"></script>
+  <script src="js/types.js"></script>
+  <script src="js/algorithm.js"></script>
+  <script src="js/radar.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
