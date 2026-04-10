@@ -183,7 +183,7 @@ function renderResult() {
   // === Hero ===
   html += `
     <div class="result-hero">
-      <div class="result-tier">${tierLabels[t.tier] || ''}</div>
+      <div class="result-tier">${tierLabels[t.tier] || ''} · LBTI</div>
       <span class="result-type-emoji">${t.emoji}</span>
       <div class="result-type-name">${t.name}</div>
       <div class="result-type-code">${r.code} · ${t.code}</div>
@@ -541,9 +541,9 @@ function restartTest() {
 // ===== 分享 =====
 function shareResult() {
   const t = state.result.type;
-  const text = `我的健康寿命指数是${state.result.finalLife}岁，属于【${t.emoji}${t.name}】！来测测你能活多久？🧬`;
+  const text = `我的LBTI健康寿命指数是${state.result.finalLife}岁，属于【${t.emoji}${t.name}】！来测测你能活多久？🧬`;
   if (navigator.share) {
-    navigator.share({ title: '活多久 · 健康寿命测试', text, url: window.location.href }).catch(() => {});
+    navigator.share({ title: 'LBTI · 你还能活多久？', text, url: window.location.href }).catch(() => {});
   } else {
     navigator.clipboard.writeText(text + '\n' + window.location.href).then(() => {
       alert('已复制到剪贴板，粘贴分享给朋友吧！');
