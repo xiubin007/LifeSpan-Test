@@ -40,7 +40,6 @@ function showScreen(id) {
 function startTest() {
   if (!state.age || !state.gender) return;
 
-  // 打乱题目顺序（但保持F1多选题在最后）
   const normalQuestions = QUESTIONS.filter(q => !q.multi);
   const multiQuestions = QUESTIONS.filter(q => q.multi);
 
@@ -64,7 +63,7 @@ function shuffleArray(arr) {
 function renderQuestion() {
   const q = state.shuffledQuestions[state.currentIndex];
   const area = document.getElementById('questionArea');
-  const isMulti = q.multi;
+  const isMulti = !!q.multi;
   const selected = isMulti ? (state.answers[q.id] || []) : state.answers[q.id];
 
   let html = `
@@ -73,16 +72,16 @@ function renderQuestion() {
       <span>${q.dimLabel || ''}</span>
     </div>
     <div class="question-title">${q.text}</div>
-    <div class="options">
+    <div class="options" id="optionsContainer">
   `;
 
   q.options.forEach((opt, idx) => {
     const isSelected = isMulti
-      ? (selected || []).includes(opt.value)
+      ? (Array.isArray(selected) && selected.includes(opt.value))
       : selected === opt.value;
 
     html += `
-      <div class="option ${isSelected ? 'selected' : ''}" onclick="selectOption('${q.id}', ${isMulti}, '${opt.value}', this)">
+      <div class="option ${isSelected ? 'selected' : ''}" data-qid="${q.id}" data-multi="${isMulti}" data-value="${opt.value}" data-idx="${idx}">
         <div class="${isMulti ? 'option-checkbox' : 'option-radio'}"></div>
         <div class="option-label">${opt.label}</div>
       </div>
@@ -92,71 +91,72 @@ function renderQuestion() {
   html += `</div>`;
   area.innerHTML = html;
 
-  // 更新进度
-  const answered = Object.keys(state.answers).filter(k => state.answers[k] !== undefined && state.answers[k] !== null).length;
-  const total = state.shuffledQuestions.length;
-  const pct = Math.round((answered / total) * 100);
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('progressText').textContent = `${answered} / ${total}`;
-  document.getElementById('dimLabel').textContent = q.dimLabel || '—';
+  // 用事件委托绑定点击
+  document.getElementById('optionsContainer').addEventListener('click', handleOptionClick);
 
-  // 导航按钮
-  document.getElementById('prevBtn').style.display = state.currentIndex > 0 ? '' : 'none';
-
-  const isLast = state.currentIndex === total - 1;
-  const nextBtn = document.getElementById('nextBtn');
-  nextBtn.textContent = isLast ? '提交并查看结果 →' : '下一题 →';
-
-  // 提示
-  const hint = document.getElementById('testHint');
-  if (isLast) {
-    const unanswered = total - answered;
-    hint.textContent = unanswered > 0
-      ? `还有 ${unanswered} 题未作答，确定要提交吗？`
-      : '全部完成！提交查看结果 🎉';
-  } else {
-    hint.textContent = answered + ' / ' + total + ' 已完成';
-  }
+  updateProgress();
+  updateNav();
 }
 
-// ===== 选择选项 =====
-function selectOption(qId, isMulti, value, el) {
+// ===== 选项点击处理（事件委托） =====
+function handleOptionClick(e) {
+  const optionEl = e.target.closest('.option');
+  if (!optionEl) return;
+
+  const qId = optionEl.dataset.qid;
+  const isMulti = optionEl.dataset.multi === 'true';
+  const value = optionEl.dataset.value;
+
+  // 找到对应的题目，确定 value 的实际类型
+  const q = state.shuffledQuestions.find(question => question.id === qId);
+  if (!q) return;
+
+  // 转换 value 类型
+  let actualValue;
   if (isMulti) {
-    // 多选逻辑
+    actualValue = value; // 多选保持字符串
+  } else {
+    actualValue = isNaN(Number(value)) ? value : Number(value);
+  }
+
+  if (isMulti) {
     let selected = state.answers[qId] || [];
 
-    // "以上都不符合"互斥
-    if (value === 'none') {
+    if (actualValue === 'none') {
       selected = ['none'];
     } else {
       selected = selected.filter(v => v !== 'none');
-      const idx = selected.indexOf(value);
+      const idx = selected.indexOf(actualValue);
       if (idx > -1) {
         selected.splice(idx, 1);
       } else {
-        selected.push(value);
+        selected.push(actualValue);
       }
     }
 
     state.answers[qId] = selected.length > 0 ? selected : undefined;
   } else {
-    // 单选逻辑
-    state.answers[qId] = value;
+    state.answers[qId] = actualValue;
   }
 
-  // 更新UI
-  const parent = el.parentElement;
-  parent.querySelectorAll('.option').forEach(opt => {
-    const optValue = opt.getAttribute('onclick').match(/'([^']+)'\)/)[1];
+  // 更新选中状态
+  const container = document.getElementById('optionsContainer');
+  container.querySelectorAll('.option').forEach(opt => {
+    const optVal = opt.dataset.value;
     if (isMulti) {
       const currentSelected = state.answers[qId] || [];
-      opt.classList.toggle('selected', currentSelected.includes(optValue));
+      opt.classList.toggle('selected', currentSelected.includes(optVal));
     } else {
-      opt.classList.toggle('selected', state.answers[qId] === optValue);
+      const numVal = isNaN(Number(optVal)) ? optVal : Number(optVal);
+      opt.classList.toggle('selected', state.answers[qId] === numVal);
     }
   });
 
-  // 更新进度
+  updateProgress();
+  updateNav();
+}
+
+function updateProgress() {
   const answered = Object.keys(state.answers).filter(k => {
     const v = state.answers[k];
     return v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0);
@@ -166,8 +166,24 @@ function selectOption(qId, isMulti, value, el) {
   document.getElementById('progressBar').style.width = pct + '%';
   document.getElementById('progressText').textContent = `${answered} / ${total}`;
 
-  const hint = document.getElementById('testHint');
+  const q = state.shuffledQuestions[state.currentIndex];
+  if (q) document.getElementById('dimLabel').textContent = q.dimLabel || '—';
+}
+
+function updateNav() {
+  document.getElementById('prevBtn').style.display = state.currentIndex > 0 ? '' : 'none';
+
+  const total = state.shuffledQuestions.length;
   const isLast = state.currentIndex === total - 1;
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.textContent = isLast ? '提交并查看结果 →' : '下一题 →';
+
+  const hint = document.getElementById('testHint');
+  const answered = Object.keys(state.answers).filter(k => {
+    const v = state.answers[k];
+    return v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0);
+  }).length;
+
   if (isLast) {
     const unanswered = total - answered;
     hint.textContent = unanswered > 0
@@ -182,7 +198,6 @@ function selectOption(qId, isMulti, value, el) {
 function nextQuestion() {
   const total = state.shuffledQuestions.length;
   if (state.currentIndex >= total - 1) {
-    // 提交
     const answered = Object.keys(state.answers).filter(k => {
       const v = state.answers[k];
       return v !== undefined && v !== null && !(Array.isArray(v) && v.length === 0);
@@ -308,7 +323,6 @@ function renderResult() {
       `;
     });
 
-    // 潜力banner
     html += `
       <div class="potential-banner">
         <div class="big">全部改善后：${r.potentialLife}岁</div>
@@ -347,15 +361,13 @@ function renderResult() {
 function animateNumber(elementId, target, duration) {
   const el = document.getElementById(elementId);
   if (!el) return;
-  const start = 0;
   const startTime = performance.now();
 
   function update(currentTime) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    // easeOutCubic
     const eased = 1 - Math.pow(1 - progress, 3);
-    const current = Math.round(start + (target - start) * eased);
+    const current = Math.round(target * eased);
     el.textContent = current;
     if (progress < 1) requestAnimationFrame(update);
   }
@@ -383,7 +395,6 @@ function shareResult() {
       url: window.location.href
     }).catch(() => {});
   } else {
-    // fallback: 复制到剪贴板
     navigator.clipboard.writeText(text + '\n' + window.location.href).then(() => {
       alert('已复制到剪贴板，粘贴分享给朋友吧！');
     }).catch(() => {
