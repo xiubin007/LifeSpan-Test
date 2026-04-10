@@ -79,9 +79,11 @@ function renderQuestion() {
     const isSelected = isMulti
       ? (Array.isArray(selected) && selected.includes(opt.value))
       : selected === opt.value;
+    const val = opt.value;
+    const valStr = typeof val === 'string' ? "'" + val + "'" : val;
 
     html += `
-      <div class="option ${isSelected ? 'selected' : ''}" data-qid="${q.id}" data-multi="${isMulti}" data-value="${opt.value}" data-idx="${idx}">
+      <div class="option ${isSelected ? 'selected' : ''}" onclick="handleClick('${q.id}',${isMulti},${valStr},this)">
         <div class="${isMulti ? 'option-checkbox' : 'option-radio'}"></div>
         <div class="option-label">${opt.label}</div>
       </div>
@@ -91,64 +93,48 @@ function renderQuestion() {
   html += `</div>`;
   area.innerHTML = html;
 
-  // 用事件委托绑定点击
-  document.getElementById('optionsContainer').addEventListener('click', handleOptionClick);
-
   updateProgress();
   updateNav();
 }
 
-// ===== 选项点击处理（事件委托） =====
-function handleOptionClick(e) {
-  const optionEl = e.target.closest('.option');
-  if (!optionEl) return;
-
-  const qId = optionEl.dataset.qid;
-  const isMulti = optionEl.dataset.multi === 'true';
-  const value = optionEl.dataset.value;
-
-  // 找到对应的题目，确定 value 的实际类型
+// ===== 选项点击处理 =====
+function handleClick(qId, isMulti, value, el) {
+  // 找到题目
   const q = state.shuffledQuestions.find(question => question.id === qId);
   if (!q) return;
 
-  // 转换 value 类型
-  let actualValue;
-  if (isMulti) {
-    actualValue = value; // 多选保持字符串
-  } else {
-    actualValue = isNaN(Number(value)) ? value : Number(value);
-  }
+  // value 从 onclick 传递，已经是正确类型（数字或字符串）
+  const actualValue = value;
 
   if (isMulti) {
-    let selected = state.answers[qId] || [];
+    let sel = state.answers[qId] || [];
 
     if (actualValue === 'none') {
-      selected = ['none'];
+      sel = ['none'];
     } else {
-      selected = selected.filter(v => v !== 'none');
-      const idx = selected.indexOf(actualValue);
+      sel = sel.filter(v => v !== 'none');
+      const idx = sel.indexOf(actualValue);
       if (idx > -1) {
-        selected.splice(idx, 1);
+        sel.splice(idx, 1);
       } else {
-        selected.push(actualValue);
+        sel.push(actualValue);
       }
     }
 
-    state.answers[qId] = selected.length > 0 ? selected : undefined;
+    state.answers[qId] = sel.length > 0 ? sel : undefined;
   } else {
     state.answers[qId] = actualValue;
   }
 
   // 更新选中状态
-  const container = document.getElementById('optionsContainer');
+  const container = document.getElementById('questionArea');
   container.querySelectorAll('.option').forEach(opt => {
-    const optVal = opt.dataset.value;
     if (isMulti) {
-      const currentSelected = state.answers[qId] || [];
-      opt.classList.toggle('selected', currentSelected.includes(optVal));
+      const currentSel = state.answers[qId] || [];
+      const optVal = opt.getAttribute('onclick').match(/handleClick\('[^']*',\w*,([^,)]*),this/);
+      opt.classList.toggle('selected', optVal && currentSel.includes(optVal[1].trim().replace(/^'/, '').replace(/'$/, '')));
     } else {
-      const numVal = isNaN(Number(optVal)) ? optVal : Number(optVal);
-      opt.classList.toggle('selected', state.answers[qId] === numVal);
+      opt.classList.toggle('selected', opt === el);
     }
   });
 
