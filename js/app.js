@@ -100,9 +100,23 @@ function handleClick(qId, isMulti, value, el) {
 
   // 更新UI
   const container = document.getElementById('questionArea');
-  container.querySelectorAll('.option').forEach(opt => {
-    opt.classList.toggle('selected', opt === el);
-  });
+  if (isMulti) {
+    const curSel = state.answers[qId] || [];
+    container.querySelectorAll('.option').forEach(opt => {
+      const onclick = opt.getAttribute('onclick') || '';
+      // 提取 valStr: handleClick('id',true/false,VALUE,this)
+      const match = onclick.match(/handleClick\([^,]+,[^,]+,(.+),this\)/);
+      if (match) {
+        let v = match[1].trim();
+        if (v.startsWith("'") && v.endsWith("'")) v = v.slice(1, -1);
+        opt.classList.toggle('selected', curSel.includes(v) || curSel.includes(Number(v)));
+      }
+    });
+  } else {
+    container.querySelectorAll('.option').forEach(opt => {
+      opt.classList.toggle('selected', opt === el);
+    });
+  }
 
   updateProgress();
   updateNav();
